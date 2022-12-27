@@ -18,7 +18,8 @@ const client = new MongoClient(uri, {
 });
 
 // db collections
-const testCollection = client.db('gossip').collection('users');
+// const testCollection = client.db('gossip').collection('users');
+const allUsersPostCollection = client.db("gossip").collection("userPosts");
 
 // run mongodb
 async function dbConnect() {
@@ -33,18 +34,34 @@ async function dbConnect() {
 dbConnect().catch((err) => console.log(err));
 
 // endpoints
-app.get("/test", async (req, res) => {
+// users post save to db
+app.post("/usersposts", async (req, res) => {
   try {
-    const test = await testCollection.find({}).toArray();
-    if (test) {
-      res.json({ status: true, message: "test got successfully", data: test });
-    } else {
-      res.json({ status: false, message: "data got failed", data: [] });
-    }
+    const doc = req.body;
+    // console.log(doc);
+    const result = await allUsersPostCollection.insertOne(doc);
+    res.send(result);
   } catch (error) {
-    res.json({ status: false, message: error.message });
+    res.send(error.message);
   }
 });
+
+// send all users post
+try {
+  app.get("/usersposts", async (req, res) => {
+    const options = {
+      sort: { uploadTime: -1 },
+    };
+    const allPosts = await allUsersPostCollection.find({}, options).toArray();
+    res.send(allPosts);
+  });
+} catch (error) {
+  res.json({
+    status: false,
+    message: error.message,
+    data: null,
+  });
+}
 
 // test server endpoint
 app.get("/", (req, res) => {
