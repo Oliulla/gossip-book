@@ -20,7 +20,10 @@ const client = new MongoClient(uri, {
 // db collections
 // const testCollection = client.db('gossip').collection('users');
 const allUsersPostCollection = client.db("gossip").collection("userPosts");
-const allUsersLikedCollection = client.db("gossip").collection("usersLiked");
+// const allUsersLikedCollection = client.db("gossip").collection("usersLiked");
+const allUsersCommentsCollection = client
+  .db("gossip")
+  .collection("usersComments");
 
 // run mongodb
 async function dbConnect() {
@@ -130,6 +133,7 @@ app.put("/usersposts/disliked", async (req, res) => {
   }
 });
 
+// send three data depends on most likes
 app.get("/usersposts/trendings", async (req, res) => {
   try {
     const allPosts = await allUsersPostCollection.find({}).toArray();
@@ -156,6 +160,72 @@ app.get("/usersposts/trendings", async (req, res) => {
     res.json({ status: false, message: error.message });
   }
 });
+
+// send specific post data
+app.get("/usersposts/:id", async (req, res) => {
+  try {
+    const postId = req.params?.id;
+    // console.log(postId);
+    const query = { _id: ObjectId(postId) };
+    // console.log(query);
+    const userPosts = await allUsersPostCollection.findOne(query);
+    // console.log(userPosts);
+    if (userPosts) {
+      res.json({
+        status: true,
+        message: "usersposts got successfully",
+        data: userPosts,
+      });
+    } else {
+      res.json({ status: false, message: "data got failed", data: [] });
+    }
+  } catch (error) {
+    res.json({ status: false, message: error.message });
+  }
+});
+
+// save commentinfo to db
+app.put("/usersposts/comments", async (req, res) => {
+  try {
+    const doc = req.body;
+    const id = doc?.commentPostId;
+    const commentUserEmail = doc?.userEmail;
+    // console.log(id, likedUser);
+    const filter = { _id: ObjectId(id) };
+
+    const options = { upsert: true };
+    const updatedDoc = {
+      $push: {
+        commentUsers: commentUserEmail,
+      },
+    };
+
+    const result1 = await allUsersPostCollection.updateOne(
+      filter,
+      updatedDoc,
+      options
+    );
+    const result2 = await allUsersCommentsCollection.insertOne(doc);
+
+    if (result1 && result2) {
+      res.send({ result1, result2 });
+    }
+  } catch (error) {
+    console.log(error?.message);
+  }
+});
+
+app.get("/userposts/allcomments", async(req, res) => {
+  try {
+    const query = {}
+    const allComments = await allUsersCommentsCollection.find(query).toArray();
+    res.send(allComments);
+  } catch (error) {
+    res.send(error.message)
+    console.log(error?.message);
+  }
+})
+
 
 // test server endpoint
 app.get("/", (req, res) => {
