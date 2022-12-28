@@ -20,6 +20,7 @@ const client = new MongoClient(uri, {
 // db collections
 // const testCollection = client.db('gossip').collection('users');
 const allUsersPostCollection = client.db("gossip").collection("userPosts");
+const allUsersLikedCollection = client.db("gossip").collection("usersLiked");
 
 // run mongodb
 async function dbConnect() {
@@ -62,6 +63,99 @@ try {
     data: null,
   });
 }
+
+// users liked push to db
+app.put("/usersposts/liked", async (req, res) => {
+  try {
+    const likedPost = req.body;
+    const id = likedPost.postId;
+    const likedUser = likedPost.likedUserName;
+    // console.log(id, likedUser);
+    const filter = { _id: ObjectId(id) };
+
+    const options = { upsert: true };
+    const updatedDoc = {
+      $push: {
+        likedUsers: likedUser,
+      },
+    };
+
+    const result = await allUsersPostCollection.updateOne(
+      filter,
+      updatedDoc,
+      options
+    );
+
+    if (result.acknowledged) {
+      res.send(result);
+    }
+  } catch (error) {
+    res.json({
+      status: false,
+      message: error.message,
+    });
+  }
+});
+
+// users disliked and pop from db
+app.put("/usersposts/disliked", async (req, res) => {
+  try {
+    const likedPost = req.body;
+    const id = likedPost.postId;
+    const likedUser = likedPost.likedUserName;
+    // console.log(id, likedUser);
+    const filter = { _id: ObjectId(id) };
+
+    const options = { upsert: true };
+    const updatedDoc = {
+      $pull: {
+        likedUsers: likedUser,
+      },
+    };
+
+    const result = await allUsersPostCollection.updateOne(
+      filter,
+      updatedDoc,
+      options
+    );
+
+    if (result.acknowledged) {
+      res.send(result);
+    }
+  } catch (error) {
+    res.json({
+      status: false,
+      message: error.message,
+    });
+  }
+});
+
+app.get("/usersposts/trendings", async (req, res) => {
+  try {
+    const allPosts = await allUsersPostCollection.find({}).toArray();
+    // console.log(allPosts)
+    // console.log(allPosts.likedUsers)
+    // const topLiked = allPosts.filter(post => console.log())
+    const sortedPosts = allPosts.sort((firstObj, secondObj) => {
+      // console.log(firstObj, secondObj)
+      const firstObjLen = parseInt(firstObj?.likedUsers?.length);
+      const secondObjLen = parseInt(secondObj?.likedUsers?.length);
+      // return a.likedUsers?.length - b.likedUsers?.length;
+      return secondObjLen - firstObjLen;
+    });
+
+    // console.log("check sorting", sortedPosts)
+    // console.log(allPosts)
+    const trendingsPosts = sortedPosts?.splice(0, 3);
+    // console.log("three trendings posts", trendingsPosts);
+
+    if (allPosts) {
+      res.send(trendingsPosts);
+    }
+  } catch (error) {
+    res.json({ status: false, message: error.message });
+  }
+});
 
 // test server endpoint
 app.get("/", (req, res) => {
