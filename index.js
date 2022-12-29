@@ -19,8 +19,9 @@ const client = new MongoClient(uri, {
 
 // db collections
 // const testCollection = client.db('gossip').collection('users');
-const allUsersPostCollection = client.db("gossip").collection("userPosts");
 // const allUsersLikedCollection = client.db("gossip").collection("usersLiked");
+const allUsersPostCollection = client.db("gossip").collection("userPosts");
+const usersCollection = client.db("gossip").collection("users");
 const allUsersCommentsCollection = client
   .db("gossip")
   .collection("usersComments");
@@ -184,6 +185,23 @@ app.get("/usersposts/:id", async (req, res) => {
   }
 });
 
+// send specific user post
+app.get("/userpost/:email", async (req, res) => {
+  try {
+    const email = req.params?.email;
+    // console.log(email)
+    const query = {
+      postUserEmail: email,
+    };
+    const allPosts = await allUsersPostCollection.find(query).toArray();
+    // console.log(allPosts);
+    res.send(allPosts);
+  } catch (error) {
+    res.send(error?.message);
+    console.log(error);
+  }
+});
+
 // save commentinfo to db
 app.put("/usersposts/comments", async (req, res) => {
   try {
@@ -215,17 +233,106 @@ app.put("/usersposts/comments", async (req, res) => {
   }
 });
 
-app.get("/userposts/allcomments", async(req, res) => {
+app.get("/userposts/allcomments", async (req, res) => {
   try {
-    const query = {}
+    const query = {};
     const allComments = await allUsersCommentsCollection.find(query).toArray();
     res.send(allComments);
   } catch (error) {
-    res.send(error.message)
+    res.send(error.message);
     console.log(error?.message);
   }
-})
+});
 
+// save user to db
+// post users
+app.put("/users", async (req, res) => {
+  try {
+    const user = req.body;
+    const filter = { email: user?.email };
+    const options = { upsert: true };
+    const updatedDoc = {
+      $set: {
+        unserName: user?.displayName,
+        userPhotoURL: user?.photoURL,
+      },
+    };
+    const result = await usersCollection.updateOne(filter, updatedDoc, options);
+    res.send(result);
+  } catch (error) {
+    res.json({
+      status: false,
+      message: error.message,
+    });
+  }
+});
+
+// find a user
+app.get("/users", async (req, res) => {
+  try {
+    const email = req.query?.email;
+    const query = { email };
+    const user = await usersCollection.findOne(query);
+    res.send(user);
+  } catch (error) {
+    res.send(error.message);
+    console.log(error);
+  }
+});
+
+// insert update info for a user
+app.put("/users/update", async (req, res) => {
+  try {
+    const updateProfile = req.body?.updateInfo;
+    // const filter = {_id: }
+    const id = updateProfile.userId;
+    const filter = { _id: ObjectId(id) };
+    const options = { upsert: true };
+    const updatedDoc = {
+      $set: {
+        updatedName: updateProfile?.updatedName,
+        updatedEmail: updateProfile?.updatedEmail,
+        updatedEducation: updateProfile?.updatedEducation,
+        updatedAddress: updateProfile?.updatedAddress,
+      },
+    };
+
+    // console.log(filter, updateProfile);
+    const result = await usersCollection.updateOne(filter, updatedDoc, options);
+    res.send(result);
+  } catch (error) {
+    console.log(error);
+  }
+  // console.log(updateProfile);
+});
+
+// temporary to update postscollection
+// app.get('/addname', async (req, res) => {
+//     // console.log(email)
+//     // const email = 'leo@gmail.com';
+//     const name = 'Cristiano Ronaldo'
+//     const filter = {}
+//     const options = { upsert: true }
+//     const updatedDoc = {
+//         $set: {
+//             userName: name
+//         }
+//     }
+//     const result = await usersCollection.updateMany(filter, updatedDoc, options);
+//     console.log(result)
+//     res.send(result);
+// })
+
+// temporary insert user to users collection
+// app.get("/adduser", async (req, res) => {
+//   const result = await usersCollection.insertMany([
+//     { email: "leo@gmail.com" },
+//     { email: "ron@gmail.com" },
+//     { email: "razasm29@gmail.com" },
+//   ]);
+//   console.log(result);
+//   res.send(result);
+// });
 
 // test server endpoint
 app.get("/", (req, res) => {
