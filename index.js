@@ -73,7 +73,7 @@ app.put("/usersposts/liked", async (req, res) => {
   try {
     const likedPost = req.body;
     const id = likedPost.postId;
-    const likedUser = likedPost.likedUserName;
+    const likedUser = likedPost.likedUserEmail;
     // console.log(id, likedUser);
     const filter = { _id: ObjectId(id) };
 
@@ -106,7 +106,7 @@ app.put("/usersposts/disliked", async (req, res) => {
   try {
     const likedPost = req.body;
     const id = likedPost.postId;
-    const likedUser = likedPost.likedUserName;
+    const likedUser = likedPost.likedUserEmail;
     // console.log(id, likedUser);
     const filter = { _id: ObjectId(id) };
 
