@@ -1,6 +1,7 @@
 const express = require("express");
 const cors = require("cors");
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
+const jwt = require("jsonwebtoken");
 require("dotenv").config();
 const app = express();
 
@@ -16,6 +17,24 @@ const client = new MongoClient(uri, {
   useUnifiedTopology: true,
   serverApi: ServerApiVersion.v1,
 });
+
+// verify jwt authorization
+function verifyJWT(req, res, next) {
+  const authHeader = req.headers.authorization;
+  if (!authHeader) {
+    return res.status(401).send("unauthorized access");
+  }
+
+  const token = authHeader.split(" ")[1];
+
+  jwt.verify(token, process.env.JWT_TOKEN, function (error, decoded) {
+    if (error) {
+      return res.status(403).send({ message: "forbidden access" });
+    }
+    req.decoded = decoded;
+    next();
+  });
+}
 
 // db collections
 // const testCollection = client.db('gossip').collection('users');
@@ -186,7 +205,7 @@ app.get("/usersposts/:id", async (req, res) => {
 });
 
 // send specific user post
-app.get("/userpost/:email", async (req, res) => {
+app.get("/userpost/:email", verifyJWT, async (req, res) => {
   try {
     const email = req.params?.email;
     // console.log(email)
@@ -253,7 +272,7 @@ app.put("/users", async (req, res) => {
     const options = { upsert: true };
     const updatedDoc = {
       $set: {
-        unserName: user?.displayName,
+        userName: user?.displayName,
         userPhotoURL: user?.photoURL,
       },
     };
@@ -304,6 +323,35 @@ app.put("/users/update", async (req, res) => {
     console.log(error);
   }
   // console.log(updateProfile);
+});
+
+// get all users
+app.get("/allusers", async (req, res) => {
+  try {
+    const users = await usersCollection.find({}).toArray();
+    // console.log(users);
+    res.send(users);
+  } catch (error) {
+    console.log(error?.message);
+    res.send(error?.message);
+  }
+});
+
+// jwt authorization
+app.get("/jwt", async (req, res) => {
+  try {
+    const email = req.query.email;
+    const query = { email: email };
+    const user = await usersCollection.findOne(query);
+    if (user) {
+      const token = jwt.sign({ email }, process.env.JWT_TOKEN);
+      return res.send({ accessToken: token });
+    }
+    res.status(403).send({ accessToken: "" });
+  } catch (error) {
+    res.send(error.message);
+    console.log(error);
+  }
 });
 
 // temporary to update postscollection
